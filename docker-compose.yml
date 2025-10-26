@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: takatrack-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./backend:/var/www
+      - ./backend/storage:/var/www/storage
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=takatrack
+      - DB_USERNAME=takatrack
+      - DB_PASSWORD=takatrack
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - SESSION_DRIVER=redis
+      - CACHE_DRIVER=redis
+    depends_on:
+      - db
+      - redis
+    networks:
+      - takatrack
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: takatrack-frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+      - VITE_APP_URL=http://localhost:3000
+    depends_on:
+      - app
+    networks:
+      - takatrack
+
+  db:
+    image: mysql:8.0
+    container_name: takatrack-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: takatrack
+      MYSQL_USER: takatrack
+      MYSQL_PASSWORD: takatrack
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./backend/database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    networks:
+      - takatrack
+
+  redis:
+    image: redis:7-alpine
+    container_name: takatrack-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - takatrack
+
+  queue:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: takatrack-queue
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./backend:/var/www
+    command: php artisan queue:work --verbose --tries=3 --timeout=90
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=takatrack
+      - DB_USERNAME=takatrack
+      - DB_PASSWORD=takatrack
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+    depends_on:
+      - db
+      - redis
+    networks:
+      - takatrack
+
+volumes:
+  db_data:
+  redis_data:
+
+networks:
+  takatrack:
+    driver: bridge

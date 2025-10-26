@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none relative overflow-hidden;
+  }
+  
+  .btn::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 transition-opacity duration-300;
+    transform: translateX(-100%);
+  }
+  
+  .btn:hover::before {
+    @apply opacity-20;
+    transform: translateX(100%);
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/25 transform hover:-translate-y-1 active:translate-y-0 border border-blue-400/20;
+  }
+  
+  .btn-secondary {
+    @apply bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 text-slate-700 shadow-md hover:shadow-lg hover:shadow-slate-500/20 transform hover:-translate-y-0.5 active:translate-y-0 border border-slate-300/50 dark:from-slate-700 dark:via-slate-800 dark:to-slate-900 dark:text-slate-100 dark:border-slate-600/50;
+  }
+  
+  .btn-outline {
+    @apply border-2 border-blue-500 bg-transparent text-blue-600 hover:bg-blue-500 hover:text-white shadow-md hover:shadow-lg hover:shadow-blue-500/20 transform hover:-translate-y-0.5 active:translate-y-0 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400;
+  }
+  
+  .btn-success {
+    @apply bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 text-white shadow-lg hover:shadow-xl hover:shadow-emerald-500/25 transform hover:-translate-y-1 active:translate-y-0 border border-emerald-400/20;
+  }
+  
+  .btn-danger {
+    @apply bg-gradient-to-br from-red-500 via-red-600 to-red-700 text-white shadow-lg hover:shadow-xl hover:shadow-red-500/25 transform hover:-translate-y-1 active:translate-y-0 border border-red-400/20;
+  }
+  
+  .btn-error {
+    @apply bg-gradient-to-br from-red-500 via-red-600 to-red-700 text-white shadow-lg hover:shadow-xl hover:shadow-red-500/25 transform hover:-translate-y-1 active:translate-y-0 border border-red-400/20;
+  }
+  
+  .btn-warning {
+    @apply bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 text-white shadow-lg hover:shadow-xl hover:shadow-amber-500/25 transform hover:-translate-y-1 active:translate-y-0 border border-amber-400/20;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-2 text-xs font-semibold min-h-[32px];
+  }
+  
+  .btn-md {
+    @apply px-4 py-2.5 text-sm font-semibold min-h-[40px];
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-base font-bold min-h-[48px];
+  }
+  
+  .btn-xl {
+    @apply px-8 py-4 text-lg font-bold min-h-[56px];
+  }
+  
+  .input {
+    @apply flex h-11 w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:placeholder:text-gray-400 transition-colors;
+  }
+  
+  .card {
+    @apply rounded-xl border border-gray-200 bg-white p-6 shadow-lg hover:shadow-xl transition-shadow dark:border-gray-700 dark:bg-gray-800;
+  }
+  
+  .card-header {
+    @apply border-b border-gray-200 pb-4 mb-6 dark:border-gray-700;
+  }
+}
