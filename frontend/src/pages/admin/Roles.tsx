@@ -1,144 +1,47 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Edit, Trash2, Search, Shield, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../../components/LoadingSpinner'
-
-// Mock API functions - replace with actual API calls
-const rolesApi = {
-  list: () => Promise.resolve({
-    data: [
-      {
-        id: 1,
-        name: 'super-admin',
-        display_name: 'Super Admin',
-        description: 'Full system access',
-        permissions: [
-          { id: 1, name: 'cms.pages.view' },
-          { id: 2, name: 'cms.pages.create' },
-          { id: 3, name: 'cms.pages.edit' },
-          { id: 4, name: 'cms.pages.delete' },
-          { id: 5, name: 'cms.pages.publish' }
-        ],
-        users_count: 1,
-        created_at: '2024-01-01'
-      },
-      {
-        id: 2,
-        name: 'admin',
-        display_name: 'Administrator',
-        description: 'Administrative access',
-        permissions: [
-          { id: 1, name: 'cms.pages.view' },
-          { id: 2, name: 'cms.pages.create' },
-          { id: 3, name: 'cms.pages.edit' },
-          { id: 5, name: 'cms.pages.publish' }
-        ],
-        users_count: 2,
-        created_at: '2024-01-01'
-      },
-      {
-        id: 3,
-        name: 'editor',
-        display_name: 'Editor',
-        description: 'Content editing access',
-        permissions: [
-          { id: 1, name: 'cms.pages.view' },
-          { id: 2, name: 'cms.pages.create' },
-          { id: 3, name: 'cms.pages.edit' }
-        ],
-        users_count: 3,
-        created_at: '2024-01-01'
-      },
-      {
-        id: 4,
-        name: 'author',
-        display_name: 'Author',
-        description: 'Content creation access',
-        permissions: [
-          { id: 1, name: 'cms.pages.view' },
-          { id: 2, name: 'cms.pages.create' }
-        ],
-        users_count: 5,
-        created_at: '2024-01-01'
-      },
-      {
-        id: 5,
-        name: 'user',
-        display_name: 'User',
-        description: 'Basic user access',
-        permissions: [
-          { id: 1, name: 'cms.pages.view' }
-        ],
-        users_count: 15,
-        created_at: '2024-01-01'
-      }
-    ]
-  }),
-  permissions: () => Promise.resolve({
-    data: [
-      { id: 1, name: 'cms.pages.view', description: 'View pages' },
-      { id: 2, name: 'cms.pages.create', description: 'Create pages' },
-      { id: 3, name: 'cms.pages.edit', description: 'Edit pages' },
-      { id: 4, name: 'cms.pages.delete', description: 'Delete pages' },
-      { id: 5, name: 'cms.pages.publish', description: 'Publish pages' },
-      { id: 6, name: 'cms.posts.view', description: 'View posts' },
-      { id: 7, name: 'cms.posts.create', description: 'Create posts' },
-      { id: 8, name: 'cms.posts.edit', description: 'Edit posts' },
-      { id: 9, name: 'cms.posts.delete', description: 'Delete posts' },
-      { id: 10, name: 'cms.posts.publish', description: 'Publish posts' },
-      { id: 11, name: 'cms.media.view', description: 'View media' },
-      { id: 12, name: 'cms.media.upload', description: 'Upload media' },
-      { id: 13, name: 'cms.media.edit', description: 'Edit media' },
-      { id: 14, name: 'cms.media.delete', description: 'Delete media' },
-      { id: 15, name: 'cms.users.view', description: 'View users' },
-      { id: 16, name: 'cms.users.create', description: 'Create users' },
-      { id: 17, name: 'cms.users.edit', description: 'Edit users' },
-      { id: 18, name: 'cms.users.delete', description: 'Delete users' },
-      { id: 19, name: 'cms.roles.view', description: 'View roles' },
-      { id: 20, name: 'cms.roles.create', description: 'Create roles' },
-      { id: 21, name: 'cms.roles.edit', description: 'Edit roles' },
-      { id: 22, name: 'cms.roles.delete', description: 'Delete roles' },
-      { id: 23, name: 'cms.roles.assign', description: 'Assign roles' }
-    ]
-  }),
-  delete: (id: number) => Promise.resolve({ message: 'Role deleted successfully' })
-}
+import { cmsRolesApi } from '../../services/api'
 
 const Roles: React.FC = () => {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedRole, setSelectedRole] = useState<any>(null)
 
-  const { data: rolesData, isLoading } = useQuery({
-    queryKey: ['roles'],
-    queryFn: rolesApi.list
+  const { data: rolesData, isLoading, error } = useQuery({
+    queryKey: ['cms-roles'],
+    queryFn: () => cmsRolesApi.list()
   })
 
   const { data: permissionsData } = useQuery({
-    queryKey: ['permissions'],
-    queryFn: rolesApi.permissions
+    queryKey: ['cms-permissions'],
+    queryFn: () => cmsRolesApi.getPermissions()
   })
 
   const deleteMutation = useMutation({
-    mutationFn: rolesApi.delete,
+    mutationFn: cmsRolesApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      queryClient.invalidateQueries({ queryKey: ['cms-roles'] })
       toast.success('Role deleted successfully')
     },
-    onError: () => {
-      toast.error('Failed to delete role')
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete role')
     }
   })
 
-  const roles = rolesData?.data || []
-  const permissions = permissionsData?.data || []
+  const roles = Array.isArray(rolesData) ? rolesData : []
+  const permissions = Array.isArray(permissionsData) ? permissionsData : []
   const filteredRoles = roles.filter(role => 
-    role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    role.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    role.description.toLowerCase().includes(searchTerm.toLowerCase())
+    !searchTerm ||
+    role.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (role.display_name && role.display_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (role.description && role.description.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   const handleDelete = (id: number) => {
@@ -148,8 +51,8 @@ const Roles: React.FC = () => {
   }
 
   const handleEdit = (role: any) => {
-    setSelectedRole(role)
-    setShowEditModal(true)
+    // Navigate to edit page instead of showing modal
+    navigate(`/admin/roles/${role.id}/edit`)
   }
 
   const getRoleBadge = (roleName: string) => {
@@ -168,7 +71,21 @@ const Roles: React.FC = () => {
   }
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="card bg-red-50 border-red-200">
+          <p className="text-red-800">Error loading roles: {error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -179,13 +96,13 @@ const Roles: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Roles & Permissions</h1>
           <p className="text-gray-600 mt-2">Manage user roles and permissions</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
+        <Link
+          to="/admin/roles/new"
           className="btn btn-primary btn-md"
         >
           <Plus className="w-4 h-4 mr-2" />
           Create Role
-        </button>
+        </Link>
       </div>
 
       {/* Search */}
@@ -268,13 +185,13 @@ const Roles: React.FC = () => {
             {searchTerm ? 'No roles found matching your search' : 'No roles created yet'}
           </div>
           {!searchTerm && (
-            <button
-              onClick={() => setShowCreateModal(true)}
+            <Link
+              to="/admin/roles/new"
               className="btn btn-primary btn-md mt-4"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Your First Role
-            </button>
+            </Link>
           )}
         </div>
       )}

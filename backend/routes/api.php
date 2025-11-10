@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Cms\PageController;
 use App\Http\Controllers\Api\Cms\PostController;
 use App\Http\Controllers\Api\Cms\MediaController;
 use App\Http\Controllers\Api\Cms\RoleController;
+use App\Http\Controllers\Api\Cms\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -106,7 +107,59 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // CMS Admin Routes (Role-based access)
-    Route::prefix('cms')->middleware('role:admin|super-admin')->group(function () {
+    Route::prefix('cms')->middleware([\App\Http\Middleware\CheckAdminRole::class])->group(function () {
+        // CMS Index - Show available endpoints
+        Route::get('/', function () {
+            return response()->json([
+                'message' => 'TakaTrack CMS API',
+                'version' => '1.0.0',
+                'endpoints' => [
+                    'pages' => [
+                        'GET /api/cms/pages' => 'List all pages',
+                        'POST /api/cms/pages' => 'Create a new page',
+                        'GET /api/cms/pages/{id}' => 'Get a specific page',
+                        'PUT /api/cms/pages/{id}' => 'Update a page',
+                        'DELETE /api/cms/pages/{id}' => 'Delete a page',
+                        'GET /api/cms/pages/published' => 'Get published pages',
+                        'GET /api/cms/pages/slug/{slug}' => 'Get page by slug',
+                    ],
+                    'posts' => [
+                        'GET /api/cms/posts' => 'List all posts',
+                        'POST /api/cms/posts' => 'Create a new post',
+                        'GET /api/cms/posts/{id}' => 'Get a specific post',
+                        'PUT /api/cms/posts/{id}' => 'Update a post',
+                        'DELETE /api/cms/posts/{id}' => 'Delete a post',
+                        'GET /api/cms/posts/published' => 'Get published posts',
+                        'GET /api/cms/posts/slug/{slug}' => 'Get post by slug',
+                        'GET /api/cms/posts/tags' => 'Get all tags',
+                        'GET /api/cms/posts/categories' => 'Get all categories',
+                    ],
+                    'media' => [
+                        'GET /api/cms/media' => 'List all media',
+                        'POST /api/cms/media' => 'Upload a media file',
+                        'GET /api/cms/media/{id}' => 'Get a specific media',
+                        'PUT /api/cms/media/{id}' => 'Update media metadata',
+                        'DELETE /api/cms/media/{id}' => 'Delete a media file',
+                        'POST /api/cms/media/upload-multiple' => 'Upload multiple files',
+                        'GET /api/cms/media/folders' => 'Get all folders',
+                        'GET /api/cms/media/types' => 'Get all media types',
+                    ],
+                    'roles' => [
+                        'GET /api/cms/roles' => 'List all roles',
+                        'POST /api/cms/roles' => 'Create a new role',
+                        'GET /api/cms/roles/{id}' => 'Get a specific role',
+                        'PUT /api/cms/roles/{id}' => 'Update a role',
+                        'DELETE /api/cms/roles/{id}' => 'Delete a role',
+                        'GET /api/cms/roles/permissions' => 'Get all permissions',
+                        'POST /api/cms/roles/assign-user' => 'Assign role to user',
+                        'POST /api/cms/roles/remove-user' => 'Remove role from user',
+                    ],
+                ],
+                'authentication' => 'Bearer token required',
+                'authorization' => 'Admin or Super Admin role required',
+            ]);
+        });
+
         // Pages
         Route::apiResource('pages', PageController::class);
         Route::get('pages/published', [PageController::class, 'published']);
@@ -130,6 +183,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('roles/permissions', [RoleController::class, 'permissions']);
         Route::post('roles/assign-user', [RoleController::class, 'assignToUser']);
         Route::post('roles/remove-user', [RoleController::class, 'removeFromUser']);
+
+        // Users
+        Route::apiResource('users', UserController::class);
     });
 });
 

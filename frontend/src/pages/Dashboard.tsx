@@ -21,6 +21,8 @@ import ChatAssistant from '../components/ChatAssistant'
 import SpendingInsights from '../components/SpendingInsights'
 import StreakTracker from '../components/StreakTracker'
 import SpinWheel from '../components/SpinWheel'
+import OnboardingTour from '../components/OnboardingTour'
+import { useOnboarding } from '../hooks/useOnboarding'
 import { useNavigate } from 'react-router-dom'
 
 const Dashboard: React.FC = () => {
@@ -28,6 +30,48 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate()
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [showSpendingInsights, setShowSpendingInsights] = useState(false)
+  const { showTour, completeOnboarding, skipOnboarding } = useOnboarding()
+
+  const onboardingSteps = [
+    {
+      id: 'welcome',
+      title: 'Welcome to TakaTrack! 👋',
+      content: 'TakaTrack helps you manage your personal finances with ease. Let\'s take a quick tour to get you started.',
+    },
+    {
+      id: 'dashboard',
+      title: 'Your Financial Dashboard',
+      content: 'This is your main dashboard where you can see your financial overview, recent transactions, and quick insights at a glance.',
+      target: '[data-tour="dashboard-summary"]',
+      position: 'bottom' as const,
+    },
+    {
+      id: 'transactions',
+      title: 'Track Your Transactions',
+      content: 'Click on "Transactions" in the sidebar to add, edit, and manage your income and expenses. You can categorize them for better organization.',
+      target: '[data-tour="nav-transactions"]',
+      position: 'right' as const,
+    },
+    {
+      id: 'budgets',
+      title: 'Set Up Budgets',
+      content: 'Create monthly budgets for different categories to stay on track with your spending goals. Get alerts when you\'re approaching limits.',
+      target: '[data-tour="nav-budgets"]',
+      position: 'right' as const,
+    },
+    {
+      id: 'reports',
+      title: 'View Reports',
+      content: 'Access detailed financial reports to analyze your spending patterns, income trends, and export data for your records.',
+      target: '[data-tour="nav-reports"]',
+      position: 'right' as const,
+    },
+    {
+      id: 'complete',
+      title: 'You\'re All Set! 🎉',
+      content: 'You now know the basics of TakaTrack. Start by adding your first transaction or setting up a budget. Need help? Check the User Guide or contact support.',
+    },
+  ]
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ['transactions', 'summary'],
@@ -66,7 +110,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="dashboard-summary">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Welcome back, {user?.name}!
@@ -335,6 +379,15 @@ const Dashboard: React.FC = () => {
             />
           </div>
         </div>
+      )}
+
+      {/* Onboarding Tour */}
+      {showTour && (
+        <OnboardingTour
+          steps={onboardingSteps}
+          onComplete={completeOnboarding}
+          onSkip={skipOnboarding}
+        />
       )}
     </div>
   )

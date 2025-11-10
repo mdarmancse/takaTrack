@@ -1,51 +1,10 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Edit, Trash2, Search, Eye, MoreVertical } from 'lucide-react'
+import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../../components/LoadingSpinner'
-
-// Mock API functions - replace with actual API calls
-const postsApi = {
-  list: () => Promise.resolve({
-    data: [
-      {
-        id: 1,
-        title: 'Getting Started with Personal Finance',
-        slug: 'getting-started-personal-finance',
-        status: 'published',
-        type: 'post',
-        published_at: '2024-01-20',
-        author: { name: 'John Doe' },
-        tags: ['finance', 'beginner'],
-        categories: ['education']
-      },
-      {
-        id: 2,
-        title: 'Budgeting Tips for Beginners',
-        slug: 'budgeting-tips-beginners',
-        status: 'draft',
-        type: 'post',
-        published_at: null,
-        author: { name: 'Jane Smith' },
-        tags: ['budgeting', 'tips'],
-        categories: ['education']
-      },
-      {
-        id: 3,
-        title: 'Investment Strategies',
-        slug: 'investment-strategies',
-        status: 'published',
-        type: 'article',
-        published_at: '2024-01-15',
-        author: { name: 'Mike Johnson' },
-        tags: ['investment', 'strategy'],
-        categories: ['investment']
-      }
-    ]
-  }),
-  delete: (id: number) => Promise.resolve({ message: 'Post deleted successfully' })
-}
+import { cmsPostsApi } from '../../services/api'
 
 const Posts: React.FC = () => {
   const queryClient = useQueryClient()
@@ -53,26 +12,31 @@ const Posts: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
 
-  const { data: postsData, isLoading } = useQuery({
-    queryKey: ['posts'],
-    queryFn: postsApi.list
+  const { data: postsData, isLoading, error } = useQuery({
+    queryKey: ['cms-posts', statusFilter, typeFilter, searchTerm],
+    queryFn: () => cmsPostsApi.list({ 
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      type: typeFilter !== 'all' ? typeFilter : undefined,
+      search: searchTerm || undefined
+    })
   })
 
   const deleteMutation = useMutation({
-    mutationFn: postsApi.delete,
+    mutationFn: cmsPostsApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] })
+      queryClient.invalidateQueries({ queryKey: ['cms-posts'] })
       toast.success('Post deleted successfully')
     },
-    onError: () => {
-      toast.error('Failed to delete post')
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete post')
     }
   })
 
   const posts = postsData?.data || []
   const filteredPosts = posts.filter(post => {
-    const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = !searchTerm || 
+      post.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.slug?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || post.status === statusFilter
     const matchesType = typeFilter === 'all' || post.type === typeFilter
     return matchesSearch && matchesStatus && matchesType
@@ -111,7 +75,21 @@ const Posts: React.FC = () => {
   }
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="card bg-red-50 border-red-200">
+          <p className="text-red-800">Error loading posts: {error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -223,7 +201,7 @@ const Posts: React.FC = () => {
                     {getStatusBadge(post.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{post.author.name}</div>
+                    <div className="text-sm text-gray-900">{post.author?.name || post.author_id?.name || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">

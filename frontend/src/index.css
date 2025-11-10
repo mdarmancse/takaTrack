@@ -83,4 +83,11 @@
   .card-header {
     @apply border-b border-gray-200 pb-4 mb-6 dark:border-gray-700;
   }
+
+  /* Onboarding Tour Highlight */
+  .tour-highlight {
+    @apply ring-4 ring-blue-500 ring-opacity-50 rounded-lg transition-all duration-300;
+    position: relative;
+    z-index: 1;
+  }
 }

@@ -16,7 +16,19 @@ class TransactionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = $request->user()->transactions()->with('category');
+        $query = $request->user()->transactions()->with('category', 'account');
+
+        // Search functionality
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('note', 'like', "%{$search}%")
+                  ->orWhere('amount', 'like', "%{$search}%")
+                  ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                      $categoryQuery->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
 
         // Apply filters
         if ($request->has('type')) {
@@ -33,6 +45,14 @@ class TransactionController extends Controller
 
         if ($request->has('to_date')) {
             $query->where('date', '<=', $request->to_date);
+        }
+
+        if ($request->has('amount_min')) {
+            $query->where('amount', '>=', $request->amount_min);
+        }
+
+        if ($request->has('amount_max')) {
+            $query->where('amount', '<=', $request->amount_max);
         }
 
         // Apply sorting
@@ -102,18 +122,29 @@ class TransactionController extends Controller
         $fromDate = $request->get('from_date', now()->startOfMonth());
         $toDate = $request->get('to_date', now()->endOfMonth());
 
-        $transactions = $user->transactions()
+        // Use database aggregation instead of loading all records
+        $income = $user->transactions()
             ->whereBetween('date', [$fromDate, $toDate])
-            ->get();
+            ->where('type', 'income')
+            ->sum('amount');
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expenses = $transactions->where('type', 'expense')->sum('amount');
+        $expenses = $user->transactions()
+            ->whereBetween('date', [$fromDate, $toDate])
+            ->where('type', 'expense')
+            ->sum('amount');
+
         $net = $income - $expenses;
 
-        $categoryBreakdown = $transactions->groupBy('category_id')
+        // Optimize category breakdown with database aggregation
+        $categoryBreakdown = $user->transactions()
+            ->whereBetween('date', [$fromDate, $toDate])
+            ->with('category')
+            ->get()
+            ->groupBy('category_id')
             ->map(function ($categoryTransactions) {
+                $category = $categoryTransactions->first()->category;
                 return [
-                    'category' => $categoryTransactions->first()->category->name,
+                    'category' => $category ? $category->name : 'Uncategorized',
                     'income' => $categoryTransactions->where('type', 'income')->sum('amount'),
                     'expenses' => $categoryTransactions->where('type', 'expense')->sum('amount'),
                     'net' => $categoryTransactions->where('type', 'income')->sum('amount') - 
@@ -123,9 +154,9 @@ class TransactionController extends Controller
 
         return response()->json([
             'summary' => [
-                'income' => $income,
-                'expenses' => $expenses,
-                'net' => $net,
+                'income' => $income ?? 0,
+                'expenses' => $expenses ?? 0,
+                'net' => $net ?? 0,
             ],
             'category_breakdown' => $categoryBreakdown,
         ]);

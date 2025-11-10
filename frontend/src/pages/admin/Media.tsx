@@ -1,101 +1,76 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Edit, Trash2, Search, Eye, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../../components/LoadingSpinner'
-
-// Mock API functions - replace with actual API calls
-const mediaApi = {
-  list: () => Promise.resolve({
-    data: [
-      {
-        id: 1,
-        filename: 'hero-image.jpg',
-        original_filename: 'hero-image.jpg',
-        mime_type: 'image/jpeg',
-        url: '/images/hero-image.jpg',
-        size: 245760,
-        width: 1920,
-        height: 1080,
-        alt_text: 'Hero image for homepage',
-        title: 'Homepage Hero',
-        folder: 'images',
-        is_public: true,
-        uploaded_by: 1,
-        created_at: '2024-01-20',
-        uploader: { name: 'John Doe' }
-      },
-      {
-        id: 2,
-        filename: 'document.pdf',
-        original_filename: 'user-guide.pdf',
-        mime_type: 'application/pdf',
-        url: '/documents/document.pdf',
-        size: 1024000,
-        width: null,
-        height: null,
-        alt_text: null,
-        title: 'User Guide',
-        folder: 'documents',
-        is_public: true,
-        uploaded_by: 2,
-        created_at: '2024-01-18',
-        uploader: { name: 'Jane Smith' }
-      },
-      {
-        id: 3,
-        filename: 'video.mp4',
-        original_filename: 'tutorial.mp4',
-        mime_type: 'video/mp4',
-        url: '/videos/video.mp4',
-        size: 15728640,
-        width: 1280,
-        height: 720,
-        alt_text: null,
-        title: 'Tutorial Video',
-        folder: 'videos',
-        is_public: false,
-        uploaded_by: 1,
-        created_at: '2024-01-15',
-        uploader: { name: 'John Doe' }
-      }
-    ]
-  }),
-  delete: (id: number) => Promise.resolve({ message: 'Media deleted successfully' })
-}
+import { cmsMediaApi } from '../../services/api'
 
 const Media: React.FC = () => {
   const queryClient = useQueryClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [folderFilter, setFolderFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [showUploadModal, setShowUploadModal] = useState(false)
 
-  const { data: mediaData, isLoading } = useQuery({
-    queryKey: ['media'],
-    queryFn: mediaApi.list
+  const { data: mediaData, isLoading, error } = useQuery({
+    queryKey: ['cms-media', folderFilter, typeFilter, searchTerm],
+    queryFn: () => cmsMediaApi.list({ 
+      folder: folderFilter !== 'all' ? folderFilter : undefined,
+      type: typeFilter !== 'all' ? typeFilter : undefined,
+      search: searchTerm || undefined
+    })
+  })
+
+  const { data: foldersData } = useQuery({
+    queryKey: ['cms-media-folders'],
+    queryFn: () => cmsMediaApi.getFolders()
+  })
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => cmsMediaApi.upload(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cms-media'] })
+      queryClient.invalidateQueries({ queryKey: ['cms-media-folders'] })
+      toast.success('Media uploaded successfully')
+      setShowUploadModal(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to upload media')
+    }
   })
 
   const deleteMutation = useMutation({
-    mutationFn: mediaApi.delete,
+    mutationFn: cmsMediaApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['media'] })
+      queryClient.invalidateQueries({ queryKey: ['cms-media'] })
       toast.success('Media deleted successfully')
     },
-    onError: () => {
-      toast.error('Failed to delete media')
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete media')
     }
   })
 
   const media = mediaData?.data || []
+  const folders = foldersData || []
   const filteredMedia = media.filter(item => {
-    const matchesSearch = item.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.original_filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (item.title && item.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchesSearch = !searchTerm || 
+      item.filename?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.original_filename?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.title && item.title.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesFolder = folderFilter === 'all' || item.folder === folderFilter
-    const matchesType = typeFilter === 'all' || item.mime_type.startsWith(typeFilter)
+    const matchesType = typeFilter === 'all' || item.mime_type?.startsWith(typeFilter)
     return matchesSearch && matchesFolder && matchesType
   })
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      uploadMutation.mutate(file)
+    }
+  }
 
   const handleDelete = (id: number) => {
     if (window.confirm('Are you sure you want to delete this media file?')) {
@@ -120,11 +95,27 @@ const Media: React.FC = () => {
     return '📁'
   }
 
-  const folders = [...new Set(media.map(item => item.folder))].filter(Boolean)
-  const types = [...new Set(media.map(item => item.mime_type.split('/')[0]))].filter(Boolean)
+  // Extract unique folders and types from current media items as fallback
+  const mediaFolders = [...new Set(media.map(item => item.folder).filter(Boolean))]
+  const allFolders = Array.isArray(folders) && folders.length > 0 ? folders : mediaFolders
+  const types = [...new Set(media.map(item => item.mime_type?.split('/')[0]).filter(Boolean))]
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="card bg-red-50 border-red-200">
+          <p className="text-red-800">Error loading media: {error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -136,13 +127,29 @@ const Media: React.FC = () => {
           <p className="text-gray-600 mt-2">Manage your media files</p>
         </div>
         <div className="flex space-x-2">
-          <button className="btn btn-secondary btn-md">
-            <Upload className="w-4 h-4 mr-2" />
-            Upload Files
-          </button>
-          <button className="btn btn-primary btn-md">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Media
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileUpload}
+            className="hidden"
+            accept="image/*,video/*,application/pdf"
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="btn btn-primary btn-md"
+            disabled={uploadMutation.isPending}
+          >
+            {uploadMutation.isPending ? (
+              <>
+                <LoadingSpinner />
+                <span className="ml-2">Uploading...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Media
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -169,7 +176,7 @@ const Media: React.FC = () => {
               className="input"
             >
               <option value="all">All Folders</option>
-              {folders.map(folder => (
+              {Array.isArray(allFolders) && allFolders.map((folder: string) => (
                 <option key={folder} value={folder}>{folder}</option>
               ))}
             </select>
@@ -314,7 +321,7 @@ const Media: React.FC = () => {
                       <div className="text-sm text-gray-900">{item.folder}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{item.uploader.name}</div>
+                      <div className="text-sm text-gray-900">{item.uploader?.name || item.uploaded_by?.name || 'N/A'}</div>
                       <div className="text-sm text-gray-500">
                         {new Date(item.created_at).toLocaleDateString()}
                       </div>

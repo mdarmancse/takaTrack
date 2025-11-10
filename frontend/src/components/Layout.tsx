@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../hooks/useAuth'
 import Logo from './Logo'
-import GlobalSearch from './GlobalSearch'
+import AdvancedSearch from './AdvancedSearch'
 import NotificationCenter from './NotificationCenter'
 import { notificationApi } from '../services/api'
 import { 
@@ -21,7 +21,8 @@ import {
   Trophy,
   Tag,
   Wallet,
-  Shield
+  Shield,
+  BarChart3
 } from 'lucide-react'
 
 interface LayoutProps {
@@ -65,6 +66,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Accounts', href: '/accounts', icon: Wallet },
     { name: 'Budgets', href: '/budgets', icon: Target },
     { name: 'Goals', href: '/goals', icon: PiggyBank },
+    { name: 'Reports', href: '/reports', icon: BarChart3 },
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Gamification', href: '/gamification', icon: Trophy },
     { name: 'User Guide', href: '/guide', icon: BookOpen },
@@ -104,6 +106,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   key={item.name}
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
+                  data-tour={item.name === 'Transactions' ? 'nav-transactions' : item.name === 'Budgets' ? 'nav-budgets' : item.name === 'Reports' ? 'nav-reports' : undefined}
                   className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                     isActive(item.href)
                       ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 dark:from-blue-900 dark:to-blue-800 dark:text-blue-200 shadow-sm'
@@ -312,9 +315,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* Global Search Modal */}
-      <GlobalSearch 
-        isOpen={searchOpen} 
-        onClose={() => setSearchOpen(false)} 
+      <AdvancedSearch 
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
       />
 
       {/* Notification Center */}

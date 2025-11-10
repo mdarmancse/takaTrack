@@ -20,14 +20,34 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const message = error.response?.data?.message || error.message
+
+    // Handle different error types
+    if (status === 401) {
       localStorage.removeItem('auth_token')
-      window.location.href = '/login'
+      // Don't redirect if already on login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+    } else if (status === 403) {
+      console.error('Forbidden:', message)
+    } else if (status === 404) {
+      console.error('Not Found:', message)
+    } else if (status === 422) {
+      // Validation errors - handled by components
+      console.error('Validation Error:', error.response?.data?.errors)
+    } else if (status >= 500) {
+      console.error('Server Error:', message)
+    } else if (!error.response) {
+      // Network error
+      console.error('Network Error:', 'Please check your internet connection')
     }
+
     return Promise.reject(error)
   }
 )
@@ -234,6 +254,163 @@ export const notificationApi = {
   // Create test notification (for development)
   createTest: (): Promise<any> =>
     api.post('/notifications/test').then(res => res.data),
+}
+
+// CMS Pages API
+export const cmsPagesApi = {
+  list: (params?: Record<string, any>): Promise<{ data: any[]; meta?: any }> =>
+    api.get('/cms/pages', { params }).then(res => {
+      const data = res.data.data || res.data;
+      return Array.isArray(data) ? { data, meta: res.data.meta } : { data: [data], meta: res.data.meta };
+    }),
+  
+  get: (id: number): Promise<any> =>
+    api.get(`/cms/pages/${id}`).then(res => res.data),
+  
+  create: (data: any): Promise<any> =>
+    api.post('/cms/pages', data).then(res => res.data),
+  
+  update: (id: number, data: any): Promise<any> =>
+    api.put(`/cms/pages/${id}`, data).then(res => res.data),
+  
+  delete: (id: number): Promise<void> =>
+    api.delete(`/cms/pages/${id}`).then(() => {}),
+  
+  published: (params?: Record<string, any>): Promise<any> =>
+    api.get('/cms/pages/published', { params }).then(res => res.data),
+  
+  getBySlug: (slug: string): Promise<any> =>
+    api.get(`/cms/pages/slug/${slug}`).then(res => res.data),
+}
+
+// CMS Posts API
+export const cmsPostsApi = {
+  list: (params?: Record<string, any>): Promise<{ data: any[]; meta?: any }> =>
+    api.get('/cms/posts', { params }).then(res => {
+      const data = res.data.data || res.data;
+      return Array.isArray(data) ? { data, meta: res.data.meta } : { data: [data], meta: res.data.meta };
+    }),
+  
+  get: (id: number): Promise<any> =>
+    api.get(`/cms/posts/${id}`).then(res => res.data),
+  
+  create: (data: any): Promise<any> =>
+    api.post('/cms/posts', data).then(res => res.data),
+  
+  update: (id: number, data: any): Promise<any> =>
+    api.put(`/cms/posts/${id}`, data).then(res => res.data),
+  
+  delete: (id: number): Promise<void> =>
+    api.delete(`/cms/posts/${id}`).then(() => {}),
+  
+  published: (params?: Record<string, any>): Promise<any> =>
+    api.get('/cms/posts/published', { params }).then(res => res.data),
+  
+  getBySlug: (slug: string): Promise<any> =>
+    api.get(`/cms/posts/slug/${slug}`).then(res => res.data),
+  
+  getTags: (): Promise<string[]> =>
+    api.get('/cms/posts/tags').then(res => res.data),
+  
+  getCategories: (): Promise<string[]> =>
+    api.get('/cms/posts/categories').then(res => res.data),
+}
+
+// CMS Media API
+export const cmsMediaApi = {
+  list: (params?: Record<string, any>): Promise<{ data: any[]; meta?: any }> =>
+    api.get('/cms/media', { params }).then(res => {
+      const data = res.data.data || res.data;
+      return Array.isArray(data) ? { data, meta: res.data.meta } : { data: [data], meta: res.data.meta };
+    }),
+  
+  get: (id: number): Promise<any> =>
+    api.get(`/cms/media/${id}`).then(res => res.data),
+  
+  upload: (file: File, data?: { folder?: string; alt_text?: string; title?: string; description?: string; is_public?: boolean }): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (data?.folder) formData.append('folder', data.folder);
+    if (data?.alt_text) formData.append('alt_text', data.alt_text);
+    if (data?.title) formData.append('title', data.title);
+    if (data?.description) formData.append('description', data.description);
+    if (data?.is_public !== undefined) formData.append('is_public', data.is_public.toString());
+    
+    return api.post('/cms/media', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data);
+  },
+  
+  uploadMultiple: (files: File[], data?: { folder?: string; is_public?: boolean }): Promise<any[]> => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files[]', file));
+    if (data?.folder) formData.append('folder', data.folder);
+    if (data?.is_public !== undefined) formData.append('is_public', data.is_public.toString());
+    
+    return api.post('/cms/media/upload-multiple', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data);
+  },
+  
+  update: (id: number, data: { alt_text?: string; title?: string; description?: string; is_public?: boolean }): Promise<any> =>
+    api.put(`/cms/media/${id}`, data).then(res => res.data),
+  
+  delete: (id: number): Promise<void> =>
+    api.delete(`/cms/media/${id}`).then(() => {}),
+  
+  getFolders: (): Promise<string[]> =>
+    api.get('/cms/media/folders').then(res => res.data),
+  
+  getTypes: (): Promise<string[]> =>
+    api.get('/cms/media/types').then(res => res.data),
+}
+
+// CMS Roles API
+export const cmsRolesApi = {
+  list: (): Promise<any[]> =>
+    api.get('/cms/roles').then(res => Array.isArray(res.data) ? res.data : res.data.data || []),
+  
+  get: (id: number): Promise<any> =>
+    api.get(`/cms/roles/${id}`).then(res => res.data),
+  
+  create: (data: { name: string; permissions?: number[] }): Promise<any> =>
+    api.post('/cms/roles', data).then(res => res.data),
+  
+  update: (id: number, data: { name?: string; permissions?: number[] }): Promise<any> =>
+    api.put(`/cms/roles/${id}`, data).then(res => res.data),
+  
+  delete: (id: number): Promise<void> =>
+    api.delete(`/cms/roles/${id}`).then(() => {}),
+  
+  getPermissions: (): Promise<any[]> =>
+    api.get('/cms/roles/permissions').then(res => Array.isArray(res.data) ? res.data : res.data.data || []),
+  
+  assignToUser: (userId: number, roleId: number): Promise<any> =>
+    api.post('/cms/roles/assign-user', { user_id: userId, role_id: roleId }).then(res => res.data),
+  
+  removeFromUser: (userId: number, roleId: number): Promise<any> =>
+    api.post('/cms/roles/remove-user', { user_id: userId, role_id: roleId }).then(res => res.data),
+}
+
+// CMS Users API
+export const cmsUsersApi = {
+  list: (params?: Record<string, any>): Promise<{ data: any[]; meta?: any }> =>
+    api.get('/cms/users', { params }).then(res => {
+      const data = res.data.data || res.data;
+      return Array.isArray(data) ? { data, meta: res.data.meta } : { data: [data], meta: res.data.meta };
+    }),
+  
+  get: (id: number): Promise<any> =>
+    api.get(`/cms/users/${id}`).then(res => res.data),
+  
+  create: (data: { name: string; email: string; password: string; password_confirmation: string; roles?: number[] }): Promise<any> =>
+    api.post('/cms/users', data).then(res => res.data),
+  
+  update: (id: number, data: { name?: string; email?: string; password?: string; password_confirmation?: string; roles?: number[] }): Promise<any> =>
+    api.put(`/cms/users/${id}`, data).then(res => res.data),
+  
+  delete: (id: number): Promise<void> =>
+    api.delete(`/cms/users/${id}`).then(() => {}),
 }
 
 export { api }

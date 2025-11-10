@@ -1,71 +1,41 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { Plus, Edit, Trash2, Search, Eye, MoreVertical } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../../components/LoadingSpinner'
-
-// Mock API functions - replace with actual API calls
-const pagesApi = {
-  list: () => Promise.resolve({
-    data: [
-      {
-        id: 1,
-        title: 'Home Page',
-        slug: 'home',
-        status: 'published',
-        created_at: '2024-01-15',
-        updated_at: '2024-01-20',
-        creator: { name: 'John Doe' }
-      },
-      {
-        id: 2,
-        title: 'About Us',
-        slug: 'about',
-        status: 'draft',
-        created_at: '2024-01-10',
-        updated_at: '2024-01-18',
-        creator: { name: 'Jane Smith' }
-      },
-      {
-        id: 3,
-        title: 'Contact',
-        slug: 'contact',
-        status: 'published',
-        created_at: '2024-01-05',
-        updated_at: '2024-01-15',
-        creator: { name: 'Mike Johnson' }
-      }
-    ]
-  }),
-  delete: (id: number) => Promise.resolve({ message: 'Page deleted successfully' })
-}
+import { cmsPagesApi } from '../../services/api'
 
 const Pages: React.FC = () => {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  const { data: pagesData, isLoading } = useQuery({
-    queryKey: ['pages'],
-    queryFn: pagesApi.list
+  const { data: pagesData, isLoading, error } = useQuery({
+    queryKey: ['cms-pages', statusFilter, searchTerm],
+    queryFn: () => cmsPagesApi.list({ 
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      search: searchTerm || undefined
+    })
   })
 
   const deleteMutation = useMutation({
-    mutationFn: pagesApi.delete,
+    mutationFn: cmsPagesApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pages'] })
+      queryClient.invalidateQueries({ queryKey: ['cms-pages'] })
       toast.success('Page deleted successfully')
     },
-    onError: () => {
-      toast.error('Failed to delete page')
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete page')
     }
   })
 
   const pages = pagesData?.data || []
   const filteredPages = pages.filter(page => {
-    const matchesSearch = page.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         page.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = !searchTerm || 
+      page.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      page.slug?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || page.status === statusFilter
     return matchesSearch && matchesStatus
   })
@@ -90,7 +60,21 @@ const Pages: React.FC = () => {
   }
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="card bg-red-50 border-red-200">
+          <p className="text-red-800">Error loading pages: {error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -179,11 +163,11 @@ const Pages: React.FC = () => {
                     {getStatusBadge(page.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{page.creator.name}</div>
+                    <div className="text-sm text-gray-900">{page.creator?.name || page.created_by?.name || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">
-                      {new Date(page.updated_at).toLocaleDateString()}
+                      {page.updated_at ? new Date(page.updated_at).toLocaleDateString() : 'N/A'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

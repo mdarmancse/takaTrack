@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { transactionsApi, categoriesApi, aiApi } from '../services/api'
 import { Transaction, Category } from '../types'
 import LoadingSpinner from '../components/LoadingSpinner'
+import TransactionImport from '../components/TransactionImport'
 import { 
   Plus, 
   Edit, 
@@ -14,7 +15,8 @@ import {
   DollarSign,
   Tag,
   Sparkles,
-  Loader2
+  Loader2,
+  Upload
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -26,6 +28,7 @@ const Transactions: React.FC = () => {
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [isClassifying, setIsClassifying] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   // Fetch transactions
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
@@ -189,13 +192,22 @@ const Transactions: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Transactions</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your income and expenses</p>
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="btn btn-primary btn-md"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            <span className="font-bold">Add Transaction</span>
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowImport(true)}
+              className="btn btn-outline btn-md"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="btn btn-primary btn-md"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              <span className="font-bold">Add Transaction</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -537,6 +549,12 @@ const Transactions: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Import Modal */}
+      <TransactionImport
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+      />
     </div>
   )
 }

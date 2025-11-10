@@ -4,51 +4,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Edit, Trash2, Search, Eye, Shield, Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../../components/LoadingSpinner'
-
-// Mock API functions - replace with actual API calls
-const usersApi = {
-  list: () => Promise.resolve({
-    data: [
-      {
-        id: 1,
-        name: 'John Doe',
-        email: 'john@example.com',
-        roles: ['admin'],
-        created_at: '2024-01-15',
-        last_login_at: '2024-01-20',
-        is_active: true
-      },
-      {
-        id: 2,
-        name: 'Jane Smith',
-        email: 'jane@example.com',
-        roles: ['editor'],
-        created_at: '2024-01-10',
-        last_login_at: '2024-01-19',
-        is_active: true
-      },
-      {
-        id: 3,
-        name: 'Mike Johnson',
-        email: 'mike@example.com',
-        roles: ['user'],
-        created_at: '2024-01-05',
-        last_login_at: '2024-01-18',
-        is_active: false
-      },
-      {
-        id: 4,
-        name: 'Sarah Wilson',
-        email: 'sarah@example.com',
-        roles: ['author'],
-        created_at: '2024-01-01',
-        last_login_at: null,
-        is_active: true
-      }
-    ]
-  }),
-  delete: (id: number) => Promise.resolve({ message: 'User deleted successfully' })
-}
+import { cmsUsersApi } from '../../services/api'
 
 const Users: React.FC = () => {
   const queryClient = useQueryClient()
@@ -56,27 +12,32 @@ const Users: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  const { data: usersData, isLoading } = useQuery({
-    queryKey: ['users'],
-    queryFn: usersApi.list
+  const { data: usersData, isLoading, error } = useQuery({
+    queryKey: ['cms-users', roleFilter, searchTerm],
+    queryFn: () => cmsUsersApi.list({ 
+      role: roleFilter !== 'all' ? roleFilter : undefined,
+      search: searchTerm || undefined
+    })
   })
 
   const deleteMutation = useMutation({
-    mutationFn: usersApi.delete,
+    mutationFn: cmsUsersApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['cms-users'] })
       toast.success('User deleted successfully')
     },
-    onError: () => {
-      toast.error('Failed to delete user')
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete user')
     }
   })
 
   const users = usersData?.data || []
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = roleFilter === 'all' || user.roles.includes(roleFilter)
+    const matchesSearch = !searchTerm || 
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesRole = roleFilter === 'all' || 
+      (Array.isArray(user.roles) && user.roles.some((r: any) => r.name === roleFilter || r === roleFilter))
     const matchesStatus = statusFilter === 'all' || 
                          (statusFilter === 'active' && user.is_active) ||
                          (statusFilter === 'inactive' && !user.is_active)
@@ -114,10 +75,28 @@ const Users: React.FC = () => {
     )
   }
 
-  const roles = [...new Set(users.flatMap(user => user.roles))].filter(Boolean)
+  const roles = [...new Set(users.flatMap(user => 
+    Array.isArray(user.roles) 
+      ? user.roles.map((r: any) => typeof r === 'string' ? r : r.name)
+      : []
+  ))].filter(Boolean)
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="card bg-red-50 border-red-200">
+          <p className="text-red-800">Error loading users: {error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -222,11 +201,14 @@ const Users: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-wrap gap-1">
-                      {user.roles.map((role) => (
-                        <span key={role}>
-                          {getRoleBadge(role)}
-                        </span>
-                      ))}
+                      {Array.isArray(user.roles) && user.roles.map((role: any) => {
+                        const roleName = typeof role === 'string' ? role : role.name;
+                        return (
+                          <span key={roleName || role.id || role}>
+                            {getRoleBadge(roleName)}
+                          </span>
+                        );
+                      })}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
