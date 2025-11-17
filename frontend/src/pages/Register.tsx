@@ -183,7 +183,7 @@ const Register: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn btn-primary w-full h-12"
+              className="btn btn-primary btn-lg w-full"
             >
               {isLoading ? (
                 <LoadingSpinner size="sm" className="mr-2" />

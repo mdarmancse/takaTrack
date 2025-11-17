@@ -249,7 +249,7 @@ const SpinWheel: React.FC = () => {
 
             <button
               onClick={closeResult}
-              className="btn btn-primary w-full"
+              className="btn btn-primary btn-md w-full"
             >
               Awesome! Let's Continue
             </button>

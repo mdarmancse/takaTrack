@@ -56,6 +56,10 @@
     @apply bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 text-white shadow-lg hover:shadow-xl hover:shadow-amber-500/25 transform hover:-translate-y-1 active:translate-y-0 border border-amber-400/20;
   }
   
+  .btn-xs {
+    @apply px-2 py-1 text-xs font-semibold min-h-[24px];
+  }
+  
   .btn-sm {
     @apply px-3 py-2 text-xs font-semibold min-h-[32px];
   }

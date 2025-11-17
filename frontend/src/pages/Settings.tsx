@@ -302,7 +302,7 @@ const Settings: React.FC = () => {
                 <div className="space-y-3">
                   <button
                     onClick={logout}
-                    className="btn btn-outline flex items-center gap-2 text-red-600 hover:text-red-700"
+                    className="btn btn-danger btn-md flex items-center gap-2"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign Out
@@ -404,7 +404,7 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
 
-                <button className="btn btn-primary flex items-center gap-2">
+                <button className="btn btn-primary btn-md flex items-center gap-2">
                   <Save className="w-4 h-4" />
                   Save Preferences
                 </button>
@@ -427,7 +427,7 @@ const Settings: React.FC = () => {
                     </div>
                     <button
                       onClick={handleExportData}
-                      className="btn btn-outline flex items-center gap-2"
+                      className="btn btn-outline btn-md flex items-center gap-2"
                     >
                       <Download className="w-4 h-4" />
                       Export
@@ -441,7 +441,7 @@ const Settings: React.FC = () => {
                         Upload previously exported data
                       </p>
                     </div>
-                    <label className="btn btn-outline flex items-center gap-2 cursor-pointer">
+                    <label className="btn btn-outline btn-md flex items-center gap-2 cursor-pointer">
                       <Upload className="w-4 h-4" />
                       Import
                       <input

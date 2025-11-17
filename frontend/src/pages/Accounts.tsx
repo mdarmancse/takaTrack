@@ -323,7 +323,7 @@ const Accounts: React.FC = () => {
               <div className="flex space-x-3">
                 <button
                   type="submit"
-                  className="btn btn-primary flex-1"
+                  className="btn btn-primary btn-md flex-1"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {editingAccount ? 'Update' : 'Create'}
@@ -331,7 +331,7 @@ const Accounts: React.FC = () => {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="btn btn-outline"
+                  className="btn btn-outline btn-md"
                 >
                   Cancel
                 </button>
